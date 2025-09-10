@@ -2,10 +2,10 @@ using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Trossitec.Azure.Function.Configuration;
-using Trossitec.Azure.Function.Models;
+using Azure.Function.Configuration;
+using Azure.Function.Models;
 
-namespace Trossitec.Azure.Function.Providers.Messaging;
+namespace Azure.Function.Providers.Messaging;
 
 public class ServiceBusProvider : IServiceBusProvider, IDisposable
 {

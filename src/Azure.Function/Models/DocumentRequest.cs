@@ -1,4 +1,4 @@
-namespace Trossitec.Azure.Function.Models;
+namespace Azure.Function.Models;
 
 public class DocumentRequest
 {

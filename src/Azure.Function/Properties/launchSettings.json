@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Trossitec.Azure.Function": {
+  "Azure.Function": {
       "commandName": "Project",
       "commandLineArgs": "--port 7113",
       "launchBrowser": false

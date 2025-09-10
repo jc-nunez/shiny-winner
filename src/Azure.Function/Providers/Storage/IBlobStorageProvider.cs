@@ -1,4 +1,4 @@
-namespace Trossitec.Azure.Function.Providers.Storage;
+namespace Azure.Function.Providers.Storage;
 
 public interface IBlobStorageProvider
 {

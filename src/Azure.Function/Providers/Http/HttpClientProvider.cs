@@ -2,10 +2,10 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Trossitec.Azure.Function.Configuration;
-using Trossitec.Azure.Function.Models;
+using Azure.Function.Configuration;
+using Azure.Function.Models;
 
-namespace Trossitec.Azure.Function.Providers.Http;
+namespace Azure.Function.Providers.Http;
 
 public class HttpClientProvider : IHttpClientProvider
 {
@@ -23,7 +23,7 @@ public class HttpClientProvider : IHttpClientProvider
         // Configure HttpClient
         _httpClient.BaseAddress = new Uri(_config.BaseUrl);
         _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", "Trossitec-DocumentProcessor/1.0");
+    _httpClient.DefaultRequestHeaders.Add("User-Agent", "DocumentProcessor/1.0");
         _httpClient.Timeout = TimeSpan.FromSeconds(_config.TimeoutSeconds);
 
         _jsonOptions = new JsonSerializerOptions

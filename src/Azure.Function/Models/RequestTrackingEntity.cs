@@ -1,7 +1,7 @@
 using Azure;
 using Azure.Data.Tables;
 
-namespace Trossitec.Azure.Function.Models;
+namespace Azure.Function.Models;
 
 public class RequestTrackingEntity : ITableEntity
 {

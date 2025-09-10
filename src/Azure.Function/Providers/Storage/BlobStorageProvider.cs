@@ -2,9 +2,9 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Trossitec.Azure.Function.Configuration;
+using Azure.Function.Configuration;
 
-namespace Trossitec.Azure.Function.Providers.Storage;
+namespace Azure.Function.Providers.Storage;
 
 public class BlobStorageProvider : IBlobStorageProvider
 {

@@ -1,4 +1,4 @@
-namespace Trossitec.Azure.Function.Configuration;
+namespace Azure.Function.Configuration;
 
 public class ServiceBusConfiguration
 {

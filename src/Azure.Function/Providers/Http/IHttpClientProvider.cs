@@ -1,6 +1,6 @@
-using Trossitec.Azure.Function.Models;
+using Azure.Function.Models;
 
-namespace Trossitec.Azure.Function.Providers.Http;
+namespace Azure.Function.Providers.Http;
 
 public interface IHttpClientProvider
 {

@@ -1,6 +1,6 @@
-using Trossitec.Azure.Function.Models;
+using Azure.Function.Models;
 
-namespace Trossitec.Azure.Function.Providers.Messaging;
+namespace Azure.Function.Providers.Messaging;
 
 public interface IServiceBusProvider
 {

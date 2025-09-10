@@ -1,6 +1,6 @@
-using Trossitec.Azure.Function.Models;
+using Azure.Function.Models;
 
-namespace Trossitec.Azure.Function.Providers.Storage;
+namespace Azure.Function.Providers.Storage;
 
 public interface ITableStorageProvider
 {
