@@ -4,10 +4,22 @@ This guide explains how to configure the Azure Functions app to use System Manag
 
 ## Overview
 
-The application supports three authentication methods for blob storage:
-1. **Connection String** - Traditional connection string authentication (for local dev/legacy)
-2. **System Managed Identity** - Uses the Function App's system-assigned managed identity
-3. **User-Managed Identity** - Uses a user-assigned managed identity with explicit client ID
+The application supports multiple authentication methods across different Azure services:
+
+**Storage Accounts:**
+- **System Managed Identity** - Function App's system identity (for source storage)
+- **User-Managed Identity** - Dedicated identity with client ID (for destination storage)
+- **Connection String** - Traditional authentication (for local dev/legacy)
+
+**Service Bus:**
+- **System Managed Identity** - Function App's system identity
+- **Connection String** - Traditional authentication (for local dev/legacy)
+
+**External API:**
+- **Managed Identity Token** - Dynamic bearer tokens from Azure AD
+- **API Key** - Traditional API key authentication  
+- **Bearer Token** - Static bearer token
+- **Subscription Key** - Azure API Management/Front Door support
 
 ## Configuration
 
@@ -38,8 +50,7 @@ The application supports three authentication methods for blob storage:
   },
   "ServiceBus": {
     "Namespace": "your-servicebus-namespace",
-    "AuthenticationMethod": "UserManagedIdentity",
-    "UserManagedIdentityClientId": "87654321-4321-4321-4321-876543210def",
+    "AuthenticationMethod": "SystemManagedIdentity",
     "StatusTopicName": "document-status-updates",
     "NotificationTopicName": "document-notifications"
   },
@@ -111,12 +122,12 @@ For the **destination** storage account using User-Managed Identity:
 
 ### 3. Service Bus Managed Identity Setup
 
-For Service Bus using User-Managed Identity:
+For Service Bus using System Managed Identity:
 
-1. **Grant Azure Service Bus Data Sender role to the User-Managed Identity:**
+1. **Grant Azure Service Bus Data Sender role to the Function App's System Managed Identity:**
    ```bash
    az role assignment create \
-     --assignee $(az identity show --resource-group your-resource-group --name your-user-managed-identity-name --query principalId -o tsv) \
+     --assignee-object-id $(az functionapp identity show --name your-function-app-name --resource-group your-resource-group --query principalId -o tsv) \
      --role "Azure Service Bus Data Sender" \
      --scope "/subscriptions/your-subscription-id/resourceGroups/your-resource-group/providers/Microsoft.ServiceBus/namespaces/your-servicebus-namespace"
    ```
