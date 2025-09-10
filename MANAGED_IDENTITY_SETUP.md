@@ -29,16 +29,12 @@ The application supports multiple authentication methods across different Azure 
     "StorageAccounts": {
       "source": {
         "AccountName": "mysourceaccount",
-        "AuthenticationMethod": "SystemManagedIdentity",
-        "Purpose": "source",
-        "Description": "Source storage account using system managed identity"
+        "AuthenticationMethod": "SystemManagedIdentity"
       },
       "destination": {
         "AccountName": "mydestinationaccount", 
         "AuthenticationMethod": "UserManagedIdentity",
-        "UserManagedIdentityClientId": "12345678-1234-1234-1234-123456789abc",
-        "Purpose": "destination",
-        "Description": "Destination storage account using user managed identity"
+        "UserManagedIdentityClientId": "12345678-1234-1234-1234-123456789abc"
       }
     },
     "ContainerToAccountMapping": {

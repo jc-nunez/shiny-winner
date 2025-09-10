@@ -36,8 +36,7 @@ The `local.settings.json` file contains all configuration settings for local dev
     "source": {
       "AccountName": "devstoreaccount1",
       "AuthenticationMethod": "ConnectionString",
-      "ConnectionString": "UseDevelopmentStorage=true",
-      "Purpose": "source"
+      "ConnectionString": "UseDevelopmentStorage=true"
     }
   }
 }
@@ -148,6 +147,7 @@ HTTPBin echoes back the request, making it perfect for testing headers, authenti
   "Storage": {
     "StorageAccounts": {
       "source": {
+        "AccountName": "devstoreaccount1",
         "AuthenticationMethod": "ConnectionString",
         "ConnectionString": "UseDevelopmentStorage=true"
       }
@@ -162,6 +162,7 @@ HTTPBin echoes back the request, making it perfect for testing headers, authenti
   "Storage": {
     "StorageAccounts": {
       "source": {
+        "AccountName": "devstorage",
         "AuthenticationMethod": "ConnectionString",
         "ConnectionString": "DefaultEndpointsProtocol=https;AccountName=devstorage;AccountKey=..."
       }

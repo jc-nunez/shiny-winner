@@ -37,15 +37,5 @@ public class StorageAccountConfig
     /// Client ID for User-Managed Identity (required when AuthenticationMethod is "UserManagedIdentity")
     /// </summary>
     public string? UserManagedIdentityClientId { get; set; }
-    
-    /// <summary>
-    /// Purpose of the storage account ("source", "destination", "processing", etc.)
-    /// </summary>
-    public required string Purpose { get; set; }
-    
-    /// <summary>
-    /// Optional description for documentation purposes
-    /// </summary>
-    public string? Description { get; set; }
 }
 

@@ -74,7 +74,7 @@ public class BlobStorageProviderFactory : IBlobStorageProviderFactory
     {
         var provider = new SingleStorageAccountProvider(
             storageAccountId,
-            accountConfig.Purpose,
+            storageAccountId, // Use storageAccountId as purpose since it's the same ("source", "destination", etc.)
             accountConfig.AccountName,
             accountConfig.AuthenticationMethod,
             accountConfig.ConnectionString,
@@ -83,11 +83,11 @@ public class BlobStorageProviderFactory : IBlobStorageProviderFactory
         
         _providers[storageAccountId] = provider;
         
-        // Map by purpose (last one wins if multiple accounts have the same purpose)
-        _providersByPurpose[accountConfig.Purpose] = provider;
+        // Map by purpose - use storageAccountId as the purpose key
+        _providersByPurpose[storageAccountId] = provider;
         
-        _logger.LogDebug("Added storage provider for account {StorageAccountId} with purpose {Purpose} using {AuthMethod}", 
-            storageAccountId, accountConfig.Purpose, accountConfig.AuthenticationMethod);
+        _logger.LogDebug("Added storage provider for account {StorageAccountId} using {AuthMethod}", 
+            storageAccountId, accountConfig.AuthenticationMethod);
     }
 
     private static string ExtractAccountNameFromConnectionString(string connectionString)
