@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Http.Resilience;
 using Azure.Function.Configuration;
 using Azure.Function.Services;
 using Azure.Function.Providers.Storage;
@@ -25,8 +24,6 @@ public static class ServiceCollectionExtensions
         // Register business services
         services.AddBusinessServices();
 
-        // Configure HTTP resilience
-        services.AddHttpResilience(configuration);
 
         return services;
     }
@@ -110,7 +107,8 @@ public static class ServiceCollectionExtensions
         // Messaging provider
         services.AddScoped<IServiceBusProvider, ServiceBusProvider>();
 
-        // HTTP provider will be registered separately due to HttpClient requirements
+        // HTTP provider - simplified without HttpClient dependencies
+        services.AddScoped<IHttpClientProvider, HttpClientProvider>();
 
         return services;
     }
@@ -126,46 +124,4 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>
-    /// Configures HTTP client with resilience policies
-    /// </summary>
-    public static IServiceCollection AddHttpResilience(this IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddHttpClient<IHttpClientProvider, HttpClientProvider>()
-            .AddStandardResilienceHandler(options =>
-            {
-                // Configure retry policy
-                var resilienceConfig = configuration.GetSection("Resilience");
-                var retryConfig = resilienceConfig.GetSection("RetryPolicy");
-                
-                if (retryConfig.Exists())
-                {
-                    options.Retry.MaxRetryAttempts = retryConfig.GetValue<int>("MaxRetries", 3);
-                    options.Retry.Delay = TimeSpan.Parse(retryConfig.GetValue<string>("BaseDelay") ?? "00:00:02");
-                    options.Retry.MaxDelay = TimeSpan.Parse(retryConfig.GetValue<string>("MaxDelay") ?? "00:00:30");
-                    options.Retry.BackoffType = (retryConfig.GetValue<string>("BackoffType") ?? "Exponential").ToLowerInvariant() == "exponential" 
-                        ? Polly.DelayBackoffType.Exponential 
-                        : Polly.DelayBackoffType.Constant;
-                }
-
-                // Configure circuit breaker
-                var circuitBreakerConfig = resilienceConfig.GetSection("CircuitBreaker");
-                if (circuitBreakerConfig.Exists())
-                {
-                    options.CircuitBreaker.FailureRatio = 0.5; // 50% failure rate triggers circuit breaker
-                    options.CircuitBreaker.MinimumThroughput = circuitBreakerConfig.GetValue<int>("HandledEventsAllowedBeforeBreaking", 3);
-                    options.CircuitBreaker.BreakDuration = TimeSpan.Parse(circuitBreakerConfig.GetValue<string>("DurationOfBreak") ?? "00:00:30");
-                }
-
-                // Configure timeout
-                var apiConfig = configuration.GetSection("ExternalApi");
-                if (apiConfig.Exists())
-                {
-                    var timeoutSeconds = apiConfig.GetValue<int>("TimeoutSeconds", 30);
-                    options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-                }
-            });
-
-        return services;
-    }
 }
