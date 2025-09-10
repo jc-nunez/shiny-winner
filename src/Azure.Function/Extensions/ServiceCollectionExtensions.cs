@@ -80,8 +80,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddInfrastructureProviders(this IServiceCollection services)
     {
-        // Storage providers
-        services.AddScoped<IBlobStorageProvider, BlobStorageProvider>();
+        // Storage providers - using factory pattern for multi-account support
+        services.AddSingleton<IBlobStorageProviderFactory, BlobStorageProviderFactory>();
         services.AddScoped<ITableStorageProvider, TableStorageProvider>();
 
         // Messaging provider

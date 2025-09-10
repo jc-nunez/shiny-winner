@@ -7,18 +7,18 @@ namespace Azure.Function.Services;
 
 public class DocumentHubService : IDocumentHubService
 {
-    private readonly IBlobStorageProvider _blobStorageProvider;
+    private readonly IBlobStorageProviderFactory _blobStorageProviderFactory;
     private readonly ITableStorageProvider _tableStorageProvider;
     private readonly IHttpClientProvider _httpClientProvider;
     private readonly ILogger<DocumentHubService> _logger;
 
     public DocumentHubService(
-        IBlobStorageProvider blobStorageProvider,
+        IBlobStorageProviderFactory blobStorageProviderFactory,
         ITableStorageProvider tableStorageProvider,
         IHttpClientProvider httpClientProvider,
         ILogger<DocumentHubService> logger)
     {
-        _blobStorageProvider = blobStorageProvider;
+        _blobStorageProviderFactory = blobStorageProviderFactory;
         _tableStorageProvider = tableStorageProvider;
         _httpClientProvider = httpClientProvider;
         _logger = logger;
@@ -31,14 +31,16 @@ public class DocumentHubService : IDocumentHubService
             _logger.LogInformation("Starting document submission for blob {BlobName} from container {SourceContainer}", 
                 request.BlobName, request.SourceContainer);
 
-            // Step 1: Read source blob content and metadata
-            _logger.LogDebug("Reading blob content and metadata for {BlobName}", request.BlobName);
-            var blobContent = await _blobStorageProvider.ReadBlobAsync(
+            // Step 1: Read source blob content and metadata from source storage account
+            _logger.LogDebug("Reading blob content and metadata for {BlobName} from {SourceContainer}", request.BlobName, request.SourceContainer);
+            
+            var sourceProvider = _blobStorageProviderFactory.GetProviderByPurpose("source");
+            var blobContent = await sourceProvider.ReadBlobAsync(
                 request.SourceContainer, 
                 request.BlobName, 
                 cancellationToken);
 
-            var blobMetadata = await _blobStorageProvider.ReadBlobMetadataAsync(
+            var blobMetadata = await sourceProvider.ReadBlobMetadataAsync(
                 request.SourceContainer, 
                 request.BlobName, 
                 cancellationToken);
@@ -54,7 +56,8 @@ public class DocumentHubService : IDocumentHubService
             _logger.LogDebug("Uploading blob {BlobName} to destination container {DestinationContainer}", 
                 request.BlobName, request.DestinationContainer);
             
-            var destinationETag = await _blobStorageProvider.UploadBlobAsync(
+            var destinationProvider = _blobStorageProviderFactory.GetProviderByPurpose("destination");
+            var destinationETag = await destinationProvider.UploadBlobAsync(
                 request.DestinationContainer,
                 request.BlobName,
                 blobContent,
