@@ -4,6 +4,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Azure.Function.Configuration;
 using Azure.Function.Models;
+using Azure.Identity;
+using Azure.Core;
 
 namespace Azure.Function.Providers.Http;
 
@@ -22,15 +24,50 @@ public class HttpClientProvider : IHttpClientProvider
         
         // Configure HttpClient
         _httpClient.BaseAddress = new Uri(_config.BaseUrl);
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
-    _httpClient.DefaultRequestHeaders.Add("User-Agent", "DocumentProcessor/1.0");
+        _httpClient.DefaultRequestHeaders.Add("User-Agent", "DocumentProcessor/1.0");
         _httpClient.Timeout = TimeSpan.FromSeconds(_config.TimeoutSeconds);
+        
+        // Add subscription key header if provided (for Azure API Management / Front Door)
+        if (!string.IsNullOrWhiteSpace(_config.SubscriptionKey))
+        {
+            _httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _config.SubscriptionKey);
+            _logger.LogDebug("Configured HttpClient with Ocp-Apim-Subscription-Key header");
+        }
+        
+        // Set up authentication (but don't add token yet for managed identity)
+        if (_config.AuthenticationMethod.ToLowerInvariant() != "managedidentitytoken")
+        {
+            ConfigureStaticAuthentication();
+        }
 
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             PropertyNameCaseInsensitive = true
         };
+    }
+
+    private void ConfigureStaticAuthentication()
+    {
+        switch (_config.AuthenticationMethod.ToLowerInvariant())
+        {
+            case "apikey":
+                if (string.IsNullOrWhiteSpace(_config.ApiKey))
+                    throw new ArgumentException("ApiKey is required for ApiKey authentication method");
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.ApiKey}");
+                _logger.LogDebug("Configured HttpClient with API Key authentication");
+                break;
+                
+            case "bearertoken":
+                if (string.IsNullOrWhiteSpace(_config.BearerToken))
+                    throw new ArgumentException("BearerToken is required for BearerToken authentication method");
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.BearerToken}");
+                _logger.LogDebug("Configured HttpClient with static Bearer Token authentication");
+                break;
+                
+            default:
+                throw new ArgumentException($"Unsupported authentication method: {_config.AuthenticationMethod}. Supported methods: ApiKey, BearerToken, ManagedIdentityToken");
+        }
     }
 
     public async Task<ApiResponse<DocumentSubmissionResponse>> SubmitDocumentAsync(DocumentRequest request, CancellationToken cancellationToken = default)
@@ -115,6 +152,8 @@ public class HttpClientProvider : IHttpClientProvider
         {
             _logger.LogDebug("Making GET request to {Endpoint}", endpoint);
             
+            await SetManagedIdentityTokenIfNeededAsync(cancellationToken);
+            
             var response = await _httpClient.GetAsync(endpoint, cancellationToken);
             return await ProcessHttpResponseAsync<T>(response);
         }
@@ -135,6 +174,8 @@ public class HttpClientProvider : IHttpClientProvider
         try
         {
             _logger.LogDebug("Making POST request to {Endpoint}", endpoint);
+
+            await SetManagedIdentityTokenIfNeededAsync(cancellationToken);
 
             var json = JsonSerializer.Serialize(data, _jsonOptions);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -192,5 +233,46 @@ public class HttpClientProvider : IHttpClientProvider
                 ErrorCode = response.StatusCode.ToString()
             };
         }
+    }
+
+    private async Task SetManagedIdentityTokenIfNeededAsync(CancellationToken cancellationToken)
+    {
+        if (_config.AuthenticationMethod.ToLowerInvariant() != "managedidentitytoken")
+            return;
+
+        try
+        {
+            var token = await GetManagedIdentityTokenAsync(cancellationToken);
+            
+            // Remove existing Authorization header if present
+            _httpClient.DefaultRequestHeaders.Remove("Authorization");
+            
+            // Add new token
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {token}");
+            
+            _logger.LogDebug("Updated Authorization header with managed identity token");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get managed identity token");
+            throw;
+        }
+    }
+
+    private async Task<string> GetManagedIdentityTokenAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_config.TokenScope))
+            throw new ArgumentException("TokenScope is required for ManagedIdentityToken authentication method");
+
+        TokenCredential credential = string.IsNullOrWhiteSpace(_config.UserManagedIdentityClientId)
+            ? new DefaultAzureCredential()
+            : new ManagedIdentityCredential(_config.UserManagedIdentityClientId);
+
+        var tokenContext = new TokenRequestContext(new[] { _config.TokenScope });
+        var tokenResult = await credential.GetTokenAsync(tokenContext, cancellationToken);
+        
+        _logger.LogDebug("Successfully obtained managed identity token for scope {TokenScope}", _config.TokenScope);
+        
+        return tokenResult.Token;
     }
 }

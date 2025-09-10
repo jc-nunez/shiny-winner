@@ -18,8 +18,34 @@ public class StorageConfiguration
 
 public class StorageAccountConfig
 {
-    public required string ConnectionString { get; set; }
-    public required string Purpose { get; set; } // "source", "destination", "processing", etc.
+    /// <summary>
+    /// Connection string for the storage account (legacy/local dev support)
+    /// </summary>
+    public string? ConnectionString { get; set; }
+    
+    /// <summary>
+    /// Storage account name (required for managed identity)
+    /// </summary>
+    public required string AccountName { get; set; }
+    
+    /// <summary>
+    /// Authentication method: "ConnectionString", "SystemManagedIdentity", "UserManagedIdentity"
+    /// </summary>
+    public required string AuthenticationMethod { get; set; }
+    
+    /// <summary>
+    /// Client ID for User-Managed Identity (required when AuthenticationMethod is "UserManagedIdentity")
+    /// </summary>
+    public string? UserManagedIdentityClientId { get; set; }
+    
+    /// <summary>
+    /// Purpose of the storage account ("source", "destination", "processing", etc.)
+    /// </summary>
+    public required string Purpose { get; set; }
+    
+    /// <summary>
+    /// Optional description for documentation purposes
+    /// </summary>
     public string? Description { get; set; }
 }
 

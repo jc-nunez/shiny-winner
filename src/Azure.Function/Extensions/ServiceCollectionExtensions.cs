@@ -36,31 +36,54 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddApplicationConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        // Storage configuration
+        // Storage configuration - bind from Storage section and legacy connection strings
         services.Configure<StorageConfiguration>(options =>
         {
-            options.SourceStorageConnection = configuration.GetConnectionString("SourceStorageConnection") 
-                ?? configuration["SourceStorageConnection"] 
-                ?? throw new InvalidOperationException("SourceStorageConnection is required");
+            // Bind the Storage section (for new multi-account configuration)
+            configuration.GetSection("Storage").Bind(options);
             
-            options.DestinationStorageConnection = configuration.GetConnectionString("DestinationStorageConnection") 
-                ?? configuration["DestinationStorageConnection"] 
-                ?? throw new InvalidOperationException("DestinationStorageConnection is required");
+            // Legacy connection strings for backward compatibility (only if not already configured)
+            if (string.IsNullOrEmpty(options.SourceStorageConnection))
+            {
+                options.SourceStorageConnection = configuration.GetConnectionString("SourceStorageConnection") 
+                    ?? configuration["SourceStorageConnection"] 
+                    ?? throw new InvalidOperationException("SourceStorageConnection is required when not using new Storage configuration");
+            }
             
-            options.TableStorageConnection = configuration.GetConnectionString("TableStorageConnection") 
-                ?? configuration["TableStorageConnection"] 
-                ?? throw new InvalidOperationException("TableStorageConnection is required");
+            if (string.IsNullOrEmpty(options.DestinationStorageConnection))
+            {
+                options.DestinationStorageConnection = configuration.GetConnectionString("DestinationStorageConnection") 
+                    ?? configuration["DestinationStorageConnection"] 
+                    ?? throw new InvalidOperationException("DestinationStorageConnection is required when not using new Storage configuration");
+            }
+            
+            if (string.IsNullOrEmpty(options.TableStorageConnection))
+            {
+                options.TableStorageConnection = configuration.GetConnectionString("TableStorageConnection") 
+                    ?? configuration["TableStorageConnection"] 
+                    ?? throw new InvalidOperationException("TableStorageConnection is required");
+            }
         });
 
-        // Service Bus configuration
+        // Service Bus configuration - bind from ServiceBus section and legacy connection strings
         services.Configure<ServiceBusConfiguration>(options =>
         {
-            options.ServiceBusConnection = configuration.GetConnectionString("ServiceBusConnection") 
-                ?? configuration["ServiceBusConnection"] 
-                ?? throw new InvalidOperationException("ServiceBusConnection is required");
+            // Bind the ServiceBus section (for new managed identity configuration)
+            configuration.GetSection("ServiceBus").Bind(options);
             
-            options.StatusTopicName = configuration["ServiceBus:StatusTopicName"] ?? "document-status-updates";
-            options.NotificationTopicName = configuration["ServiceBus:NotificationTopicName"] ?? "document-notifications";
+            // Legacy connection string for backward compatibility (only if not already configured)
+            if (string.IsNullOrEmpty(options.ServiceBusConnection))
+            {
+                options.ServiceBusConnection = configuration.GetConnectionString("ServiceBusConnection") 
+                    ?? configuration["ServiceBusConnection"] 
+                    ?? throw new InvalidOperationException("ServiceBusConnection is required when not using new ServiceBus configuration");
+            }
+            
+            // Set default topic names if not configured
+            if (string.IsNullOrEmpty(options.StatusTopicName))
+                options.StatusTopicName = "document-status-updates";
+            if (string.IsNullOrEmpty(options.NotificationTopicName))
+                options.NotificationTopicName = "document-notifications";
         });
 
         // External API configuration

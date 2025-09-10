@@ -34,7 +34,7 @@ public class DocumentHubService : IDocumentHubService
             // Step 1: Read source blob content and metadata from source storage account
             _logger.LogDebug("Reading blob content and metadata for {BlobName} from {SourceContainer}", request.BlobName, request.SourceContainer);
             
-            var sourceProvider = _blobStorageProviderFactory.GetProviderByPurpose("source");
+            var sourceProvider = _blobStorageProviderFactory.GetProvider("source");
             var blobContent = await sourceProvider.ReadBlobAsync(
                 request.SourceContainer, 
                 request.BlobName, 
@@ -56,7 +56,7 @@ public class DocumentHubService : IDocumentHubService
             _logger.LogDebug("Uploading blob {BlobName} to destination container {DestinationContainer}", 
                 request.BlobName, request.DestinationContainer);
             
-            var destinationProvider = _blobStorageProviderFactory.GetProviderByPurpose("destination");
+            var destinationProvider = _blobStorageProviderFactory.GetProvider("destination");
             var destinationETag = await destinationProvider.UploadBlobAsync(
                 request.DestinationContainer,
                 request.BlobName,

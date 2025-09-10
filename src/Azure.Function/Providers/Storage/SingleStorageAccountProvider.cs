@@ -1,6 +1,8 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
+using Azure.Identity;
+using Azure.Core;
 
 namespace Azure.Function.Providers.Storage;
 
@@ -18,16 +20,65 @@ public class SingleStorageAccountProvider : ISingleStorageAccountProvider
     public SingleStorageAccountProvider(
         string storageAccountId,
         string purpose,
-        string connectionString,
-        ILogger<SingleStorageAccountProvider> logger)
+        string accountName,
+        string authenticationMethod,
+        string? connectionString = null,
+        string? userManagedIdentityClientId = null,
+        ILogger<SingleStorageAccountProvider>? logger = null)
     {
         StorageAccountId = storageAccountId ?? throw new ArgumentNullException(nameof(storageAccountId));
         Purpose = purpose ?? throw new ArgumentNullException(nameof(purpose));
-        _blobServiceClient = new BlobServiceClient(connectionString);
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        _logger.LogDebug("Initialized storage provider for account {StorageAccountId} with purpose {Purpose}", 
-            StorageAccountId, Purpose);
+        _blobServiceClient = CreateBlobServiceClient(accountName, authenticationMethod, connectionString, userManagedIdentityClientId);
+        
+        _logger.LogInformation("Initialized storage provider for account {StorageAccountId} ({AccountName}) with purpose {Purpose} using {AuthMethod}", 
+            StorageAccountId, accountName, Purpose, authenticationMethod);
+    }
+
+    private BlobServiceClient CreateBlobServiceClient(
+        string accountName,
+        string authenticationMethod,
+        string? connectionString,
+        string? userManagedIdentityClientId)
+    {
+        return authenticationMethod.ToLowerInvariant() switch
+        {
+            "connectionstring" => CreateFromConnectionString(connectionString, accountName),
+            "systemmanaged" or "systemmanagedidentity" => CreateFromSystemManagedIdentity(accountName),
+            "usermanaged" or "usermanagedidentity" => CreateFromUserManagedIdentity(accountName, userManagedIdentityClientId),
+            _ => throw new ArgumentException($"Unsupported authentication method: {authenticationMethod}. Supported methods: ConnectionString, SystemManagedIdentity, UserManagedIdentity")
+        };
+    }
+
+    private BlobServiceClient CreateFromConnectionString(string? connectionString, string accountName)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new ArgumentException($"Connection string is required for ConnectionString authentication method (account: {accountName})");
+        
+        _logger.LogDebug("Creating BlobServiceClient using connection string for account {AccountName}", accountName);
+        return new BlobServiceClient(connectionString);
+    }
+
+    private BlobServiceClient CreateFromSystemManagedIdentity(string accountName)
+    {
+        _logger.LogDebug("Creating BlobServiceClient using System Managed Identity for account {AccountName}", accountName);
+        var credential = new DefaultAzureCredential();
+        var blobServiceUri = new Uri($"https://{accountName}.blob.core.windows.net");
+        return new BlobServiceClient(blobServiceUri, credential);
+    }
+
+    private BlobServiceClient CreateFromUserManagedIdentity(string accountName, string? userManagedIdentityClientId)
+    {
+        if (string.IsNullOrWhiteSpace(userManagedIdentityClientId))
+            throw new ArgumentException($"UserManagedIdentityClientId is required for UserManagedIdentity authentication method (account: {accountName})");
+        
+        _logger.LogDebug("Creating BlobServiceClient using User Managed Identity {ClientId} for account {AccountName}", 
+            userManagedIdentityClientId, accountName);
+        
+        var credential = new ManagedIdentityCredential(userManagedIdentityClientId);
+        var blobServiceUri = new Uri($"https://{accountName}.blob.core.windows.net");
+        return new BlobServiceClient(blobServiceUri, credential);
     }
 
     public async Task<Stream> ReadBlobAsync(string containerName, string blobName, CancellationToken cancellationToken = default)

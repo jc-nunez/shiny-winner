@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Azure.Function.Configuration;
 using Azure.Function.Models;
+using Azure.Identity;
 
 namespace Azure.Function.Providers.Messaging;
 
@@ -17,13 +18,54 @@ public class ServiceBusProvider : IServiceBusProvider, IDisposable
     public ServiceBusProvider(IOptions<ServiceBusConfiguration> options, ILogger<ServiceBusProvider> logger)
     {
         _config = options.Value;
-        _client = new ServiceBusClient(_config.ServiceBusConnection);
+        _client = CreateServiceBusClient(_config);
         _logger = logger;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false
         };
+    }
+
+    private ServiceBusClient CreateServiceBusClient(ServiceBusConfiguration config)
+    {
+        return config.AuthenticationMethod.ToLowerInvariant() switch
+        {
+            "connectionstring" => CreateFromConnectionString(config),
+            "systemmanaged" or "systemmanagedidentity" => CreateFromSystemManagedIdentity(config),
+            "usermanaged" or "usermanagedidentity" => CreateFromUserManagedIdentity(config),
+            _ => throw new ArgumentException($"Unsupported authentication method: {config.AuthenticationMethod}. Supported methods: ConnectionString, SystemManagedIdentity, UserManagedIdentity")
+        };
+    }
+
+    private ServiceBusClient CreateFromConnectionString(ServiceBusConfiguration config)
+    {
+        if (string.IsNullOrWhiteSpace(config.ServiceBusConnection))
+            throw new ArgumentException($"Service Bus connection string is required for ConnectionString authentication method");
+        
+        _logger.LogDebug("Creating ServiceBusClient using connection string");
+        return new ServiceBusClient(config.ServiceBusConnection);
+    }
+
+    private ServiceBusClient CreateFromSystemManagedIdentity(ServiceBusConfiguration config)
+    {
+        _logger.LogDebug("Creating ServiceBusClient using System Managed Identity for namespace {Namespace}", config.Namespace);
+        var credential = new DefaultAzureCredential();
+        var fullyQualifiedNamespace = $"{config.Namespace}.servicebus.windows.net";
+        return new ServiceBusClient(fullyQualifiedNamespace, credential);
+    }
+
+    private ServiceBusClient CreateFromUserManagedIdentity(ServiceBusConfiguration config)
+    {
+        if (string.IsNullOrWhiteSpace(config.UserManagedIdentityClientId))
+            throw new ArgumentException($"UserManagedIdentityClientId is required for UserManagedIdentity authentication method");
+        
+        _logger.LogDebug("Creating ServiceBusClient using User Managed Identity {ClientId} for namespace {Namespace}", 
+            config.UserManagedIdentityClientId, config.Namespace);
+        
+        var credential = new ManagedIdentityCredential(config.UserManagedIdentityClientId);
+        var fullyQualifiedNamespace = $"{config.Namespace}.servicebus.windows.net";
+        return new ServiceBusClient(fullyQualifiedNamespace, credential);
     }
 
     public async Task SendMessageAsync<T>(T message, string topicName, CancellationToken cancellationToken = default) where T : class
