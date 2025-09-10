@@ -1,4 +1,4 @@
-# Trossitec Azure Functions - Document Processing PoC
+# Azure Functions - Document Processing PoC
 
 A proof-of-concept Azure Functions application for processing document uploads with EventGrid notifications, Table Storage tracking, Service Bus messaging, and external API integration.
 
@@ -35,7 +35,7 @@ Source Storage → EventGrid → Functions → Document Processing → Destinati
 
 ```
 azure-functions-app/
-├── src/Trossitec.Azure.Function/        # Main function app project
+├── src/Azure.Function/                  # Main function app project
 │   ├── Functions/                       # Azure Functions
 │   │   ├── DocumentProcessingFunction.cs
 │   │   └── DocumentStatusMonitorFunction.cs
@@ -80,7 +80,7 @@ cd azure-functions-app
 
 ### 2. Install Dependencies
 ```bash
-cd src/Trossitec.Azure.Function
+cd src/Azure.Function
 dotnet restore
 ```
 
@@ -209,10 +209,10 @@ Handles Service Bus messaging for status updates:
 az login
 
 # Create resource group
-az group create --name rg-trossitec-functions --location eastus
+az group create --name rg-azure-functions --location eastus
 
 # Deploy Function App (example)
-func azure functionapp publish trossitec-document-processor
+func azure functionapp publish azure-document-processor
 ```
 
 ### Environment Configuration
@@ -299,7 +299,7 @@ This project is part of a proof-of-concept implementation. Please refer to your 
 
 ## 👥 Contributors
 
-- **Development Team**: Trossitec Azure Functions Team
+- **Development Team**: Azure Functions Team
 - **Architecture**: Based on Azure Well-Architected Framework principles
 
 ---
