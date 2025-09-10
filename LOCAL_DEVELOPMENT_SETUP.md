@@ -174,33 +174,79 @@ HTTPBin echoes back the request, making it perfect for testing headers, authenti
 
 For testing managed identity scenarios locally, you can:
 
-1. **Use Azure CLI Login**:
+#### **Option 1: Azure CLI Login (System Managed Identity)**
+```bash
+az login
+# The DefaultAzureCredential will use your CLI credentials
+```
+
+#### **Option 2: Service Principal for User-Managed Identity (Recommended)**
+
+1. **Create a Service Principal that matches your User-Managed Identity:**
    ```bash
-   az login
-   # The DefaultAzureCredential will use your CLI credentials
+   # Create service principal
+   az ad sp create-for-rbac --name "local-dev-user-managed-identity" --skip-assignment
+   
+   # Note down the output:
+   # {
+   #   "appId": "12345678-1234-1234-1234-123456789abc",
+   #   "password": "your-secret",
+   #   "tenant": "your-tenant-id"
+   # }
    ```
 
-2. **Use Service Principal**:
+2. **Set Environment Variables:**
    ```bash
-   # Set environment variables
-   export AZURE_CLIENT_ID="your-service-principal-id"
-   export AZURE_CLIENT_SECRET="your-service-principal-secret"
+   # Windows (PowerShell)
+   $env:AZURE_CLIENT_ID="12345678-1234-1234-1234-123456789abc"
+   $env:AZURE_CLIENT_SECRET="your-secret"
+   $env:AZURE_TENANT_ID="your-tenant-id"
+   
+   # macOS/Linux
+   export AZURE_CLIENT_ID="12345678-1234-1234-1234-123456789abc"
+   export AZURE_CLIENT_SECRET="your-secret"
    export AZURE_TENANT_ID="your-tenant-id"
    ```
 
-3. **Update Configuration**:
+3. **Grant the Service Principal the same permissions as your User-Managed Identity:**
+   ```bash
+   # For API access - grant to your API's App Registration
+   az ad app permission admin-consent --id "12345678-1234-1234-1234-123456789abc"
+   
+   # For Storage access (if needed)
+   az role assignment create \
+     --assignee "12345678-1234-1234-1234-123456789abc" \
+     --role "Storage Blob Data Contributor" \
+     --scope "/subscriptions/your-sub/resourceGroups/your-rg/providers/Microsoft.Storage/storageAccounts/yourstorage"
+   ```
+
+4. **Update local.settings.json:**
    ```json
    {
+     "ExternalApi": {
+       "BaseUrl": "https://your-real-api.com",
+       "AuthenticationMethod": "ManagedIdentityToken",
+       "TokenScope": "api://your-api-app-id/.default",
+       "UserManagedIdentityClientId": "12345678-1234-1234-1234-123456789abc",
+       "SubscriptionKey": "your-real-subscription-key"
+     },
      "Storage": {
        "StorageAccounts": {
-         "source": {
+         "destination": {
            "AccountName": "yourstorageaccount",
-           "AuthenticationMethod": "SystemManagedIdentity"
+           "AuthenticationMethod": "UserManagedIdentity",
+           "UserManagedIdentityClientId": "12345678-1234-1234-1234-123456789abc"
          }
        }
      }
    }
    ```
+
+#### **Option 3: Visual Studio/VS Code Integration**
+
+1. **Sign in to Azure in your IDE**
+2. **Use the Azure Account extension credentials**
+3. **The DefaultAzureCredential will automatically use your IDE credentials**
 
 ## Debugging Tips
 
@@ -249,6 +295,41 @@ var response = await _httpClient.GetAsync("/test");
 - Verify API key/token values
 - Check base URL is accessible
 - Test with curl/Postman first
+
+### Issue: "Managed identity token acquisition failed"
+- **Check environment variables are set correctly:**
+  ```bash
+  echo $AZURE_CLIENT_ID
+  echo $AZURE_TENANT_ID
+  # Don't echo the secret for security
+  ```
+- **Verify the service principal has correct permissions:**
+  ```bash
+  az ad sp show --id "your-client-id" --query "appId,displayName"
+  ```
+- **Test token acquisition manually:**
+  ```bash
+  az account get-access-token --resource "api://your-api-app-id"
+  ```
+- **Enable detailed logging:**
+  ```json
+  {
+    "Values": {
+      "AZURE_FUNCTIONS_ENVIRONMENT": "Development"
+    },
+    "logging": {
+      "logLevel": {
+        "Azure.Identity": "Debug",
+        "Azure.Core": "Debug"
+      }
+    }
+  }
+  ```
+
+### Issue: "Token scope not recognized"
+- Verify the `TokenScope` matches your API's App ID URI
+- Check the API app registration exposes the correct scopes
+- Ensure the scope ends with `/.default` for application permissions
 
 ## Security Notes
 
