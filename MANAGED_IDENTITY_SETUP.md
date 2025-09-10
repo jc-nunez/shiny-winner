@@ -17,8 +17,6 @@ The application supports multiple authentication methods across different Azure 
 
 **External API:**
 - **Managed Identity Token** - Dynamic bearer tokens from Azure AD
-- **API Key** - Traditional API key authentication  
-- **Bearer Token** - Static bearer token
 - **Subscription Key** - Azure API Management/Front Door support
 
 ## Configuration
@@ -56,7 +54,6 @@ The application supports multiple authentication methods across different Azure 
   },
   "ExternalApi": {
     "BaseUrl": "https://api.external-service.com",
-    "AuthenticationMethod": "ManagedIdentityToken",
     "TokenScope": "api://your-external-api/.default",
     "UserManagedIdentityClientId": "87654321-4321-4321-4321-876543210def",
     "SubscriptionKey": "your-ocp-apim-subscription-key"

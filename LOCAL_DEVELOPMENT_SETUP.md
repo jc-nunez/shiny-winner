@@ -57,8 +57,8 @@ The `local.settings.json` file contains all configuration settings for local dev
 ```json
 "ExternalApi": {
   "BaseUrl": "https://httpbin.org",
-  "AuthenticationMethod": "ApiKey", 
-  "ApiKey": "test-api-key",
+  "TokenScope": "api://your-api-app-id/.default",
+  "UserManagedIdentityClientId": "12345678-1234-1234-1234-123456789abc",
   "SubscriptionKey": "test-subscription-key"
 }
 ```
@@ -225,7 +225,6 @@ az login
    {
      "ExternalApi": {
        "BaseUrl": "https://your-real-api.com",
-       "AuthenticationMethod": "ManagedIdentityToken",
        "TokenScope": "api://your-api-app-id/.default",
        "UserManagedIdentityClientId": "12345678-1234-1234-1234-123456789abc",
        "SubscriptionKey": "your-real-subscription-key"
