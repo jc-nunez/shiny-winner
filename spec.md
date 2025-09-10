@@ -1,4 +1,4 @@
-# Trossitec Azure Function - Document Processing PoC
+# Azure Function - Document Processing PoC
 
 ## Overview
 A proof-of-concept Azure Functions application that processes document uploads through EventGrid notifications, tracks processing status in Table Storage, sends notifications via Service Bus, and provides monitoring through timer-based functions.
@@ -29,7 +29,7 @@ A proof-of-concept Azure Functions application that processes document uploads t
 ```
 azure-functions-app/
 ├── src/
-│   └── Trossitec.Azure.Function/
+│   └── Azure.Function/
 │       ├── Functions/
 │       │   ├── DocumentProcessingFunction.cs    # EventGrid triggered
 │       │   └── DocumentStatusMonitorFunction.cs # Timer triggered
@@ -68,7 +68,7 @@ azure-functions-app/
 │       ├── local.settings.json
 │       └── Program.cs
 ├── tests/
-│   └── Trossitec.Azure.Function.Tests/
+│   └── Azure.Function.Tests/
 ├── spec.md
 ├── README.md
 └── .gitignore
@@ -358,4 +358,4 @@ public class ProcessingStatus
 - [x] No memory leaks or performance issues in PoC testing
 
 ---
-*This specification provides the complete blueprint for the Trossitec document processing PoC with full integration across Azure services.*
+*This specification provides the complete blueprint for the document processing PoC with full integration across Azure services.*
