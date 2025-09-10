@@ -66,7 +66,7 @@ public class HttpClientProvider : IHttpClientProvider
     /// </summary>
     public async Task<string> GetManagedIdentityTokenAsync(CancellationToken cancellationToken = default)
     {
-        var credential = new ManagedIdentityCredential(_config.UserManagedIdentityClientId);
+        var credential = GetTokenCredential();
         var tokenContext = new TokenRequestContext(new[] { _config.TokenScope });
         var tokenResult = await credential.GetTokenAsync(tokenContext, cancellationToken);
         
@@ -74,6 +74,15 @@ public class HttpClientProvider : IHttpClientProvider
             _config.TokenScope, _config.UserManagedIdentityClientId);
         
         return tokenResult.Token;
+    }
+    
+    /// <summary>
+    /// Gets a TokenCredential for use with NuGet packages that accept DefaultAzureCredential
+    /// This returns a ManagedIdentityCredential configured with the user-managed identity
+    /// </summary>
+    public TokenCredential GetTokenCredential()
+    {
+        return new ManagedIdentityCredential(_config.UserManagedIdentityClientId);
     }
     
     /// <summary>
