@@ -5,13 +5,49 @@ using Azure.Function.Providers.Http;
 
 namespace Azure.Function.Services;
 
+/// <summary>
+/// Orchestration service for document extraction workflow operations.
+/// Coordinates between blob storage, external API, and state tracking for document processing.
+/// </summary>
+/// <remarks>
+/// This service implements the core business logic for document processing:
+/// 1. Reads documents from source blob storage
+/// 2. Uploads documents to destination storage
+/// 3. Submits documents to external processing API
+/// 4. Tracks processing state in table storage
+/// 5. Polls for status updates and manages request lifecycle
+/// 
+/// Acts as the primary orchestrator between all infrastructure providers.
+/// </remarks>
 public class DocumentExtractionHubService : IDocumentExtractionHubService
 {
+    /// <summary>
+    /// Factory for creating blob storage providers for different storage accounts (source, destination, table).
+    /// </summary>
     private readonly IBlobStorageProviderFactory _blobStorageProviderFactory;
+    
+    /// <summary>
+    /// State service for managing document processing request tracking entities.
+    /// </summary>
     private readonly IDocumentExtractionRequestStateService _documentRequestRepository;
+    
+    /// <summary>
+    /// HTTP client provider for external document processing API integration.
+    /// </summary>
     private readonly IHttpClientProvider _httpClientProvider;
+    
+    /// <summary>
+    /// Logger for tracking orchestration operations and workflow progress.
+    /// </summary>
     private readonly ILogger<DocumentExtractionHubService> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the DocumentExtractionHubService.
+    /// </summary>
+    /// <param name="blobStorageProviderFactory">Factory for creating storage providers.</param>
+    /// <param name="documentRequestRepository">Service for managing request state tracking.</param>
+    /// <param name="httpClientProvider">Provider for external API communication.</param>
+    /// <param name="logger">Logger for tracking operations.</param>
     public DocumentExtractionHubService(
         IBlobStorageProviderFactory blobStorageProviderFactory,
         IDocumentExtractionRequestStateService documentRequestRepository,
@@ -24,6 +60,23 @@ public class DocumentExtractionHubService : IDocumentExtractionHubService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Submits a document for processing through the complete extraction workflow.
+    /// </summary>
+    /// <param name="request">Document request containing source location and metadata.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>The source system RequestId used for tracking this processing request.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if RequestId metadata is missing or API submission fails.</exception>
+    /// <remarks>
+    /// Complete workflow:
+    /// 1. Reads document from source blob storage
+    /// 2. Uploads document to destination storage (without metadata)
+    /// 3. Submits to external API using RequestId from metadata
+    /// 4. Creates tracking entity with timestamps and API-generated key
+    /// 5. Returns source RequestId for subsequent status polling
+    /// 
+    /// The RequestId must be present in request.Metadata for tracking purposes.
+    /// </remarks>
     public async Task<string> SubmitAsync(DocumentRequest request, CancellationToken cancellationToken = default)
     {
         try
@@ -114,6 +167,23 @@ public class DocumentExtractionHubService : IDocumentExtractionHubService
         }
     }
 
+    /// <summary>
+    /// Retrieves the current processing status of a document extraction request.
+    /// </summary>
+    /// <param name="requestId">Source system RequestId to check status for.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <returns>Current processing status including state, message, and any results.</returns>
+    /// <remarks>
+    /// Status checking workflow:
+    /// 1. Looks up tracking entity by source RequestId
+    /// 2. Uses stored API-generated key to poll external API
+    /// 3. Updates tracking entity with latest check information
+    /// 4. Returns current status from external API
+    /// 
+    /// Returns a "NotFound" status if no tracking entity exists.
+    /// Returns an "ApiError" status if the external API call fails.
+    /// Updates CheckCount and LastCheckedAt timestamps for monitoring.
+    /// </remarks>
     public async Task<ProcessingStatus> GetStatusAsync(string requestId, CancellationToken cancellationToken = default)
     {
         try
