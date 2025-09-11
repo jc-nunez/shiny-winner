@@ -8,15 +8,46 @@ using Azure.Function.Models;
 namespace Azure.Function.Providers.Messaging;
 
 /// <summary>
-/// Simplified Service Bus provider using connection string only
+/// Service Bus messaging provider for document processing status notifications and events.
+/// Uses simplified connection string authentication with JSON message serialization.
 /// </summary>
+/// <remarks>
+/// This provider handles all Service Bus messaging for the document processing workflow,
+/// including status notifications and workflow events. Messages are JSON serialized with
+/// camelCase naming policy for consistency.
+/// </remarks>
 public class ServiceBusProvider : IServiceBusProvider, IDisposable
 {
+    /// <summary>
+    /// Azure Service Bus client for sending messages.
+    /// </summary>
     private readonly ServiceBusClient _client;
+    
+    /// <summary>
+    /// Service Bus configuration containing connection string and topic names.
+    /// </summary>
     private readonly ServiceBusConfiguration _config;
+    
+    /// <summary>
+    /// Logger for tracking messaging operations and troubleshooting.
+    /// </summary>
     private readonly ILogger<ServiceBusProvider> _logger;
+    
+    /// <summary>
+    /// JSON serialization options for consistent message formatting.
+    /// </summary>
     private readonly JsonSerializerOptions _jsonOptions;
 
+    /// <summary>
+    /// Initializes a new instance of the ServiceBusProvider.
+    /// </summary>
+    /// <param name="options">Service Bus configuration containing connection string and topic names.</param>
+    /// <param name="logger">Logger for tracking operations.</param>
+    /// <exception cref="ArgumentException">Thrown if ServiceBusConnection is null or empty.</exception>
+    /// <remarks>
+    /// Creates a ServiceBusClient using connection string authentication only.
+    /// Configures JSON serialization with camelCase naming for message consistency.
+    /// </remarks>
     public ServiceBusProvider(IOptions<ServiceBusConfiguration> options, ILogger<ServiceBusProvider> logger)
     {
         _config = options.Value;
@@ -35,6 +66,19 @@ public class ServiceBusProvider : IServiceBusProvider, IDisposable
         };
     }
 
+    /// <summary>
+    /// Sends a strongly-typed message to the specified Service Bus topic.
+    /// </summary>
+    /// <typeparam name="T">Type of message to send.</typeparam>
+    /// <param name="message">Message object to serialize and send.</param>
+    /// <param name="topicName">Name of the Service Bus topic.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <exception cref="ServiceBusException">Thrown for Service Bus operation failures.</exception>
+    /// <remarks>
+    /// Messages are JSON serialized with camelCase naming. Each message gets a unique
+    /// MessageId and the Subject is set to the type name for routing purposes.
+    /// The sender is disposed after each operation.
+    /// </remarks>
     public async Task SendMessageAsync<T>(T message, string topicName, CancellationToken cancellationToken = default) where T : class
     {
         ServiceBusSender? sender = null;
@@ -70,6 +114,16 @@ public class ServiceBusProvider : IServiceBusProvider, IDisposable
         }
     }
 
+    /// <summary>
+    /// Sends a document processing status notification to the configured status topic.
+    /// </summary>
+    /// <param name="notification">Status notification containing request ID and status details.</param>
+    /// <param name="cancellationToken">Cancellation token for the operation.</param>
+    /// <exception cref="ServiceBusException">Thrown for Service Bus operation failures.</exception>
+    /// <remarks>
+    /// Convenience method that sends the notification to the configured StatusTopicName.
+    /// Used by the monitoring function to notify about processing status changes.
+    /// </remarks>
     public async Task SendNotificationAsync(StatusNotification notification, CancellationToken cancellationToken = default)
     {
         try
@@ -88,6 +142,13 @@ public class ServiceBusProvider : IServiceBusProvider, IDisposable
         }
     }
 
+    /// <summary>
+    /// Disposes the ServiceBusClient and releases associated resources.
+    /// </summary>
+    /// <remarks>
+    /// Called automatically when the provider is disposed. Ensures proper cleanup
+    /// of Service Bus connections and resources.
+    /// </remarks>
     public void Dispose()
     {
         _client?.DisposeAsync().GetAwaiter().GetResult();
