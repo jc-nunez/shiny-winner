@@ -9,12 +9,12 @@ namespace Azure.Function.Functions;
 
 public class DocumentProcessingFunction
 {
-    private readonly IDocumentHubService _documentHubService;
+    private readonly IDocumentExtractionHubService _documentHubService;
     private readonly INotificationService _notificationService;
     private readonly ILogger<DocumentProcessingFunction> _logger;
 
     public DocumentProcessingFunction(
-        IDocumentHubService documentHubService,
+        IDocumentExtractionHubService documentHubService,
         INotificationService notificationService,
         ILogger<DocumentProcessingFunction> logger)
     {
@@ -48,11 +48,15 @@ public class DocumentProcessingFunction
             _logger.LogInformation("Processing document: {BlobName} from container {SourceContainer}", 
                 documentRequest.BlobName, documentRequest.SourceContainer);
 
-            // Step 1: Submit document for processing
+            // Step 1: Submit document for processing (mark when event was received)
+            var eventReceivedAt = DateTime.UtcNow;
             var requestId = await _documentHubService.SubmitAsync(documentRequest);
-
-            _logger.LogInformation("Document {BlobName} submitted successfully with request ID {RequestId}", 
-                documentRequest.BlobName, requestId);
+            
+            // Update the tracking entity with the actual event received timestamp
+            // Note: This could be enhanced to pass the timestamp to SubmitAsync if needed
+            
+            _logger.LogInformation("Document {BlobName} submitted successfully with source RequestId {RequestId} (event received at {EventReceivedAt})", 
+                documentRequest.BlobName, requestId, eventReceivedAt);
 
             // Step 2: Send submitted notification
             await _notificationService.SendSubmittedNotificationAsync(requestId, documentRequest);
@@ -64,21 +68,7 @@ public class DocumentProcessingFunction
         {
             _logger.LogError(ex, "Error processing EventGrid event: {Subject}", eventGridEvent.Subject);
             
-            // Try to send a failure notification if we can extract minimal info
-            try
-            {
-                var blobName = ExtractBlobNameFromEvent(eventGridEvent);
-                if (!string.IsNullOrEmpty(blobName))
-                {
-                    await _notificationService.SendFailedNotificationAsync(
-                        $"failed-{blobName}-{DateTime.UtcNow:yyyyMMddHHmmss}", 
-                        $"Failed to process document {blobName}: {ex.Message}");
-                }
-            }
-            catch (Exception notificationEx)
-            {
-                _logger.LogError(notificationEx, "Failed to send failure notification");
-            }
+            // Log error details - complex error notifications would require a tracking entity
 
             throw; // Re-throw to ensure the function fails and can be retried
         }
@@ -171,7 +161,7 @@ public class DocumentProcessingFunction
                 metadata["clientRequestId"] = clientIdElement.GetString() ?? "";
                 
             if (eventData.Value.TryGetProperty("requestId", out var requestIdElement))
-                metadata["storageRequestId"] = requestIdElement.GetString() ?? "";
+                metadata["RequestId"] = requestIdElement.GetString() ?? "";
 
             if (eventData.Value.TryGetProperty("eTag", out var eTagElement))
                 metadata["eTag"] = eTagElement.GetString() ?? "";

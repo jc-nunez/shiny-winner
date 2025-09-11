@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace Azure.Function.Examples;
 
 /// <summary>
-/// Examples showing how to use the BlobStorageProviderFactory for multi-account scenarios
+/// Examples showing how to use the simplified BlobStorageProviderFactory
 /// </summary>
 public class StorageFactoryUsage
 {
@@ -18,7 +18,7 @@ public class StorageFactoryUsage
     }
 
     /// <summary>
-    /// Example 1: Basic usage with purpose-based providers
+    /// Example 1: Basic usage with configuration-based providers
     /// </summary>
     public async Task BasicUsageExample()
     {
@@ -35,8 +35,7 @@ public class StorageFactoryUsage
         // Upload to destination storage account
         await destinationProvider.UploadBlobAsync("processed", "document.pdf", document, metadata);
         
-        _logger.LogInformation("Document transferred from {SourceAccount} to {DestinationAccount}",
-            sourceProvider.StorageAccountId, destinationProvider.StorageAccountId);
+        _logger.LogInformation("Document transferred from source to destination storage accounts");
     }
 
     /// <summary>
@@ -61,42 +60,33 @@ public class StorageFactoryUsage
     }
 
     /// <summary>
-    /// Example 3: Container-based routing
+    /// Example 3: Using different storage configurations
     /// </summary>
-    public async Task ContainerBasedRoutingExample()
+    public async Task MultipleConfigurationsExample()
     {
-        // Let the factory resolve which storage account based on container name
-        var containerA = "customer-a-uploads";
-        var providerA = _storageFactory.GetProvider(containerA);
+        // Get providers for different configured storage accounts
+        var configA = "customer-a";
+        var providerA = _storageFactory.GetProvider(configA);
         
-        var containerB = "customer-b-uploads"; 
-        var providerB = _storageFactory.GetProvider(containerB);
+        var configB = "customer-b"; 
+        var providerB = _storageFactory.GetProvider(configB);
         
-        _logger.LogInformation("Container {ContainerA} routed to storage account {AccountA}",
-            containerA, providerA.StorageAccountId);
-        _logger.LogInformation("Container {ContainerB} routed to storage account {AccountB}", 
-            containerB, providerB.StorageAccountId);
+        _logger.LogInformation("Configuration {ConfigA} resolved to provider", configA);
+        _logger.LogInformation("Configuration {ConfigB} resolved to provider", configB);
     }
 
     /// <summary>
-    /// Example 4: Using different configuration resolution methods
+    /// Example 4: Using different storage configurations
     /// </summary>
-    public async Task ConfigurationResolutionExample()
+    public async Task DifferentConfigurationsExample()
     {
-        // Method 1: Direct account ID
+        // Different configured storage accounts
         var sourceProvider = _storageFactory.GetProvider("source");
-        
-        // Method 2: Purpose-based (automatically resolved)
         var destProvider = _storageFactory.GetProvider("destination");
+        var customerProvider = _storageFactory.GetProvider("customer-a");
         
-        // Method 3: Container name (automatically mapped to correct account)
-        var customerProvider = _storageFactory.GetProvider("customer-a-uploads");
-        
-        _logger.LogInformation("Source provider: {AccountId} ({Purpose})", 
-            sourceProvider.StorageAccountId, sourceProvider.Purpose);
-        _logger.LogInformation("Destination provider: {AccountId} ({Purpose})", 
-            destProvider.StorageAccountId, destProvider.Purpose);
-        _logger.LogInformation("Customer provider: {AccountId} ({Purpose})", 
-            customerProvider.StorageAccountId, customerProvider.Purpose);
+        _logger.LogInformation("Source provider created successfully");
+        _logger.LogInformation("Destination provider created successfully");
+        _logger.LogInformation("Customer provider created successfully");
     }
 }

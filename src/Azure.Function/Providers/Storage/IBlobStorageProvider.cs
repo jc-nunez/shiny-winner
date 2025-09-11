@@ -1,5 +1,8 @@
 namespace Azure.Function.Providers.Storage;
 
+/// <summary>
+/// Generic blob storage provider that works with any configured storage account
+/// </summary>
 public interface IBlobStorageProvider
 {
     Task<Stream> ReadBlobAsync(string containerName, string blobName, CancellationToken cancellationToken = default);

@@ -1,30 +1,33 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Azure.Function.Configuration;
 
 namespace Azure.Function.Providers.Storage;
 
+/// <summary>
+/// Simple blob storage provider that works with a configured BlobServiceClient
+/// </summary>
 public class BlobStorageProvider : IBlobStorageProvider
 {
-    private readonly BlobServiceClient _sourceClient;
-    private readonly BlobServiceClient _destinationClient;
+    private readonly BlobServiceClient _blobServiceClient;
     private readonly ILogger<BlobStorageProvider> _logger;
 
-    public BlobStorageProvider(IOptions<StorageConfiguration> options, ILogger<BlobStorageProvider> logger)
+    public BlobStorageProvider(
+        BlobServiceClient blobServiceClient,
+        ILogger<BlobStorageProvider> logger)
     {
-        var config = options.Value;
-        _sourceClient = new BlobServiceClient(config.SourceStorageConnection);
-        _destinationClient = new BlobServiceClient(config.DestinationStorageConnection);
-        _logger = logger;
+        _blobServiceClient = blobServiceClient ?? throw new ArgumentNullException(nameof(blobServiceClient));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        _logger.LogDebug("Initialized blob storage provider with service client for {AccountName}", 
+            blobServiceClient.AccountName);
     }
 
     public async Task<Stream> ReadBlobAsync(string containerName, string blobName, CancellationToken cancellationToken = default)
     {
         try
         {
-            var containerClient = _sourceClient.GetBlobContainerClient(containerName);
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
             _logger.LogInformation("Reading blob {BlobName} from container {ContainerName}", blobName, containerName);
@@ -43,7 +46,7 @@ public class BlobStorageProvider : IBlobStorageProvider
     {
         try
         {
-            var containerClient = _sourceClient.GetBlobContainerClient(containerName);
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
             _logger.LogInformation("Reading metadata for blob {BlobName} from container {ContainerName}", blobName, containerName);
@@ -62,7 +65,7 @@ public class BlobStorageProvider : IBlobStorageProvider
     {
         try
         {
-            var containerClient = _destinationClient.GetBlobContainerClient(containerName);
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             await containerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken);
             
             var blobClient = containerClient.GetBlobClient(blobName);
@@ -77,7 +80,8 @@ public class BlobStorageProvider : IBlobStorageProvider
 
             var response = await blobClient.UploadAsync(content, uploadOptions, cancellationToken);
             
-            _logger.LogInformation("Successfully uploaded blob {BlobName} to container {ContainerName}", blobName, containerName);
+            _logger.LogInformation("Successfully uploaded blob {BlobName} to container {ContainerName}, ETag: {ETag}", 
+                blobName, containerName, response.Value.ETag);
             return response.Value.ETag.ToString();
         }
         catch (Exception ex)
@@ -91,10 +95,13 @@ public class BlobStorageProvider : IBlobStorageProvider
     {
         try
         {
-            var containerClient = _sourceClient.GetBlobContainerClient(containerName);
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
             var response = await blobClient.ExistsAsync(cancellationToken);
+            
+            _logger.LogDebug("Blob {BlobName} in container {ContainerName} exists: {Exists}", blobName, containerName, response.Value);
+            
             return response.Value;
         }
         catch (Exception ex)
@@ -108,7 +115,7 @@ public class BlobStorageProvider : IBlobStorageProvider
     {
         try
         {
-            var containerClient = _destinationClient.GetBlobContainerClient(containerName);
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             var blobClient = containerClient.GetBlobClient(blobName);
 
             _logger.LogInformation("Deleting blob {BlobName} from container {ContainerName}", blobName, containerName);

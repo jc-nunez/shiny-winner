@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Azure.Data.Tables;
 using Azure.Function.Configuration;
 using Azure.Function.Services;
 using Azure.Function.Providers.Storage;
@@ -102,7 +103,14 @@ public static class ServiceCollectionExtensions
     {
         // Storage providers - using factory pattern for multi-account support
         services.AddSingleton<IBlobStorageProviderFactory, BlobStorageProviderFactory>();
-        services.AddScoped<ITableStorageProvider, TableStorageProvider>();
+        
+        // Generic table storage factory and provider
+        services.AddSingleton<ITableStorageFactory, TableStorageFactory>();
+        services.AddScoped<ITableStorageProvider>(sp => 
+            sp.GetRequiredService<ITableStorageFactory>().GetProvider("DocumentRequests"));
+        
+        // Domain-specific state services (using generic repository internally)
+        services.AddScoped<IDocumentExtractionRequestStateService, DocumentExtractionRequestStateService>();
 
         // Messaging provider
         services.AddScoped<IServiceBusProvider, ServiceBusProvider>();
@@ -118,10 +126,124 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddBusinessServices(this IServiceCollection services)
     {
-        services.AddScoped<IDocumentHubService, DocumentHubService>();
+        services.AddScoped<IDocumentExtractionHubService, DocumentExtractionHubService>();
         services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }
+}
 
+/// <summary>
+/// Generic service registration extensions for any domain
+/// </summary>
+public static class GenericServiceCollectionExtensions
+{
+    /// <summary>
+    /// Adds a generic repository for any entity type
+    /// </summary>
+    public static IServiceCollection AddRepository<TEntity>(
+        this IServiceCollection services, 
+        string? tableName = null, 
+        string partitionKey = "DefaultPartition",
+        ServiceLifetime lifetime = ServiceLifetime.Scoped) 
+        where TEntity : class, ITableEntity, new()
+    {
+        var serviceDescriptor = new ServiceDescriptor(
+            typeof(IRepository<TEntity>),
+            sp =>
+            {
+                var factory = sp.GetRequiredService<ITableStorageFactory>();
+                return string.IsNullOrEmpty(tableName) 
+                    ? factory.GetRepository<TEntity>(partitionKey)
+                    : factory.GetRepository<TEntity>(tableName, partitionKey);
+            },
+            lifetime);
+
+        services.Add(serviceDescriptor);
+        return services;
+    }
+
+    /// <summary>
+    /// Adds repositories for multiple entity types
+    /// </summary>
+    public static IServiceCollection AddRepositories<T1, T2>(
+        this IServiceCollection services,
+        string partitionKey = "DefaultPartition",
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where T1 : class, ITableEntity, new()
+        where T2 : class, ITableEntity, new()
+    {
+        services.AddRepository<T1>(partitionKey: partitionKey, lifetime: lifetime);
+        services.AddRepository<T2>(partitionKey: partitionKey, lifetime: lifetime);
+        
+        return services;
+    }
+
+    /// <summary>
+    /// Adds typed repositories with fluent configuration
+    /// </summary>
+    public static IServiceCollection AddTypedRepositories(this IServiceCollection services, 
+        Action<RepositoryRegistrationBuilder> configure)
+    {
+        var builder = new RepositoryRegistrationBuilder(services);
+        configure(builder);
+        return services;
+    }
+}
+
+/// <summary>
+/// Builder for repository registrations with fluent API
+/// </summary>
+public class RepositoryRegistrationBuilder
+{
+    private readonly IServiceCollection _services;
+
+    internal RepositoryRegistrationBuilder(IServiceCollection services)
+    {
+        _services = services;
+    }
+
+    /// <summary>
+    /// Registers a repository for an entity type
+    /// </summary>
+    public RepositoryRegistrationBuilder AddRepository<TEntity>(
+        string? tableName = null,
+        string partitionKey = "DefaultPartition",
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where TEntity : class, ITableEntity, new()
+    {
+        _services.AddRepository<TEntity>(tableName, partitionKey, lifetime);
+        return this;
+    }
+
+    /// <summary>
+    /// Registers multiple repositories with the same configuration
+    /// </summary>
+    public RepositoryRegistrationBuilder AddRepositories<T1, T2>(
+        string partitionKey = "DefaultPartition",
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where T1 : class, ITableEntity, new()
+        where T2 : class, ITableEntity, new()
+    {
+        AddRepository<T1>(partitionKey: partitionKey, lifetime: lifetime);
+        AddRepository<T2>(partitionKey: partitionKey, lifetime: lifetime);
+        return this;
+    }
+}
+
+/// <summary>
+/// Domain-specific extensions using generic infrastructure
+/// </summary>
+public static class DomainSpecificServiceCollectionExtensions
+{
+    /// <summary>
+    /// Adds document processing repositories using the generic infrastructure
+    /// </summary>
+    public static IServiceCollection AddDocumentProcessingRepositories(this IServiceCollection services)
+    {
+        return services.AddTypedRepositories(builder =>
+            builder.AddRepository<Models.RequestTrackingEntity>(
+                tableName: "DocumentRequests",
+                partitionKey: "DocumentRequests"));
+    }
 }
