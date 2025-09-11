@@ -1,0 +1,42 @@
+{
+  "_comment": "Example Azure Function App application settings for production deployment",
+  "_description": "This shows how to configure the simplified settings with Key Vault references",
+  
+  "AzureWebJobsStorage": "@Microsoft.KeyVault(VaultName=mykv;SecretName=AzureWebJobsStorage)",
+  "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+  
+  "_storage_section": "Storage connection strings from Key Vault",
+  "SourceStorageConnection": "@Microsoft.KeyVault(VaultName=mykv;SecretName=SourceStorageConnection)",
+  "DestinationStorageConnection": "@Microsoft.KeyVault(VaultName=mykv;SecretName=DestinationStorageConnection)",
+  "TableStorageConnection": "@Microsoft.KeyVault(VaultName=mykv;SecretName=TableStorageConnection)",
+  
+  "_servicebus_section": "Service Bus configuration from Key Vault",
+  "ServiceBusConnection": "@Microsoft.KeyVault(VaultName=mykv;SecretName=ServiceBusConnection)",
+  "ServiceBus__StatusTopicName": "document-status-updates",
+  "ServiceBus__NotificationTopicName": "document-notifications",
+  
+  "_api_section": "External API configuration",
+  "ExternalApi__BaseUrl": "https://api.example.com",
+  "ExternalApi__SubscriptionKey": "@Microsoft.KeyVault(VaultName=mykv;SecretName=ApiSubscriptionKey)",
+  "ExternalApi__TimeoutSeconds": "30",
+  
+  "_monitoring_section": "Monitoring configuration",
+  "Monitoring__TimerInterval": "00:05:00",
+  "Monitoring__MaxCheckCount": "10",
+  "Monitoring__MaxAge": "24:00:00",
+  
+  "_resilience_section": "Resilience configuration",
+  "Resilience__RetryCount": "3",
+  "Resilience__RetryDelaySeconds": "2",
+  "Resilience__CircuitBreakerFailureThreshold": "5",
+  "Resilience__CircuitBreakerTimeoutSeconds": "30",
+  
+  "_keyvault_secrets_to_create": {
+    "SourceStorageConnection": "DefaultEndpointsProtocol=https;AccountName=prodstoragesource;AccountKey=...",
+    "DestinationStorageConnection": "DefaultEndpointsProtocol=https;AccountName=prodstoragedest;AccountKey=...",
+    "TableStorageConnection": "DefaultEndpointsProtocol=https;AccountName=prodstoragetable;AccountKey=...",
+    "ServiceBusConnection": "Endpoint=sb://prodservicebus.servicebus.windows.net/;SharedAccessKeyName=...",
+    "ApiSubscriptionKey": "your-production-api-subscription-key",
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=prodfunctionsstorage;AccountKey=..."
+  }
+}

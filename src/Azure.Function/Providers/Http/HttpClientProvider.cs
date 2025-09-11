@@ -62,27 +62,39 @@ public class HttpClientProvider : IHttpClientProvider
     }
 
     /// <summary>
-    /// Gets a managed identity token for the configured scope
+    /// Gets a managed identity token for the configured scope (if configured)
     /// </summary>
-    public async Task<string> GetManagedIdentityTokenAsync(CancellationToken cancellationToken = default)
+    public async Task<string?> GetManagedIdentityTokenAsync(CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(_config.TokenScope))
+        {
+            _logger.LogDebug("TokenScope not configured, skipping managed identity token acquisition");
+            return null;
+        }
+        
         var credential = GetTokenCredential();
         var tokenContext = new TokenRequestContext(new[] { _config.TokenScope });
         var tokenResult = await credential.GetTokenAsync(tokenContext, cancellationToken);
         
-        _logger.LogDebug("Successfully obtained managed identity token for scope {TokenScope} using client ID {ClientId}", 
-            _config.TokenScope, _config.UserManagedIdentityClientId);
+        var clientIdInfo = string.IsNullOrWhiteSpace(_config.UserManagedIdentityClientId) 
+            ? "(system-managed)" 
+            : $"using client ID {_config.UserManagedIdentityClientId}";
+            
+        _logger.LogDebug("Successfully obtained managed identity token for scope {TokenScope} {ClientIdInfo}", 
+            _config.TokenScope, clientIdInfo);
         
         return tokenResult.Token;
     }
     
     /// <summary>
     /// Gets a TokenCredential for use with NuGet packages that accept DefaultAzureCredential
-    /// This returns a ManagedIdentityCredential configured with the user-managed identity
+    /// Uses user-managed identity if configured, otherwise uses system-managed (DefaultAzureCredential)
     /// </summary>
     public TokenCredential GetTokenCredential()
     {
-        return new ManagedIdentityCredential(_config.UserManagedIdentityClientId);
+        return string.IsNullOrWhiteSpace(_config.UserManagedIdentityClientId) 
+            ? new DefaultAzureCredential()
+            : new ManagedIdentityCredential(_config.UserManagedIdentityClientId);
     }
     
     /// <summary>

@@ -1,41 +1,55 @@
 namespace Azure.Function.Configuration;
 
+/// <summary>
+/// Simplified storage configuration for the document processing function app
+/// </summary>
 public class StorageConfiguration
 {
-    // Legacy properties for backward compatibility
+    /// <summary>
+    /// Connection string for source blob storage (where documents are uploaded)
+    /// </summary>
     public required string SourceStorageConnection { get; set; }
+    
+    /// <summary>
+    /// Connection string for destination blob storage (where processed documents go)
+    /// </summary>
     public required string DestinationStorageConnection { get; set; }
+    
+    /// <summary>
+    /// Connection string for table storage (for tracking document requests)
+    /// </summary>
     public required string TableStorageConnection { get; set; }
-    
-    // Enhanced storage account configurations
-    public Dictionary<string, StorageAccountConfig> StorageAccounts { get; set; } = new();
-    public Dictionary<string, string> ContainerToAccountMapping { get; set; } = new();
-    
-    // Default account identifiers
-    public string DefaultSourceAccount { get; set; } = "source";
-    public string DefaultDestinationAccount { get; set; } = "destination";
 }
 
-public class StorageAccountConfig
+/// <summary>
+/// Optional: Future-ready configuration with managed identity support
+/// Only add this if/when you migrate away from connection strings
+/// </summary>
+public class ManagedIdentityStorageConfiguration
 {
     /// <summary>
-    /// Connection string for the storage account (legacy/local dev support)
+    /// Source storage account name for managed identity authentication
     /// </summary>
-    public string? ConnectionString { get; set; }
+    public required string SourceAccountName { get; set; }
     
     /// <summary>
-    /// Storage account name (required for managed identity)
+    /// Destination storage account name for managed identity authentication
     /// </summary>
-    public required string AccountName { get; set; }
+    public required string DestinationAccountName { get; set; }
     
     /// <summary>
-    /// Authentication method: "ConnectionString", "SystemManagedIdentity", "UserManagedIdentity"
+    /// Table storage account name for managed identity authentication
     /// </summary>
-    public required string AuthenticationMethod { get; set; }
+    public required string TableAccountName { get; set; }
     
     /// <summary>
-    /// Client ID for User-Managed Identity (required when AuthenticationMethod is "UserManagedIdentity")
+    /// Whether to use managed identity (true) or connection strings (false)
+    /// </summary>
+    public bool UseManagedIdentity { get; set; } = false;
+    
+    /// <summary>
+    /// Optional: Client ID for user-managed identity
+    /// Leave null for system-managed identity
     /// </summary>
     public string? UserManagedIdentityClientId { get; set; }
 }
-

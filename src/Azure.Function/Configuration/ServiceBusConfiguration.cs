@@ -1,26 +1,14 @@
 namespace Azure.Function.Configuration;
 
+/// <summary>
+/// Simplified Service Bus configuration using connection string only
+/// </summary>
 public class ServiceBusConfiguration
 {
     /// <summary>
-    /// Connection string for Service Bus (legacy/local dev support)
+    /// Connection string for Service Bus
     /// </summary>
-    public string? ServiceBusConnection { get; set; }
-    
-    /// <summary>
-    /// Service Bus namespace (required for managed identity)
-    /// </summary>
-    public required string Namespace { get; set; }
-    
-    /// <summary>
-    /// Authentication method: "ConnectionString", "SystemManagedIdentity", "UserManagedIdentity"
-    /// </summary>
-    public required string AuthenticationMethod { get; set; }
-    
-    /// <summary>
-    /// Client ID for User-Managed Identity (required when AuthenticationMethod is "UserManagedIdentity")
-    /// </summary>
-    public string? UserManagedIdentityClientId { get; set; }
+    public required string ServiceBusConnection { get; set; }
     
     /// <summary>
     /// Status topic name

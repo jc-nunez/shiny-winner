@@ -1,0 +1,39 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    
+    // Storage Connection Strings - Required
+    "SourceStorageConnection": "DefaultEndpointsProtocol=https;AccountName=mysourceaccount;AccountKey=...",
+    "DestinationStorageConnection": "DefaultEndpointsProtocol=https;AccountName=mydestaccount;AccountKey=...",
+    "TableStorageConnection": "DefaultEndpointsProtocol=https;AccountName=mytableaccount;AccountKey=...",
+    
+    // Service Bus Connection - Required
+    "ServiceBusConnection": "Endpoint=sb://myservicebus.servicebus.windows.net/;SharedAccessKeyName=...",
+    
+    // Service Bus Topic Names (optional - defaults will be used if not specified)
+    "ServiceBus:StatusTopicName": "document-status-updates",
+    "ServiceBus:NotificationTopicName": "document-notifications",
+    
+    // External API Configuration - Required
+    "ExternalApi:BaseUrl": "https://api.example.com",
+    "ExternalApi:SubscriptionKey": "your-api-subscription-key",
+    "ExternalApi:TimeoutSeconds": "30",
+    
+    // Optional: If you need managed identity for API calls (advanced scenario)
+    "ExternalApi:TokenScope": "api://your-api-app-id/.default",
+    "ExternalApi:UserManagedIdentityClientId": "optional-client-id-for-user-managed-identity",
+    
+    // Monitoring Configuration
+    "Monitoring:TimerInterval": "00:05:00",
+    "Monitoring:MaxCheckCount": "10",
+    "Monitoring:MaxAge": "24:00:00",
+    
+    // Resilience Configuration (optional)
+    "Resilience:RetryCount": "3",
+    "Resilience:RetryDelaySeconds": "2",
+    "Resilience:CircuitBreakerFailureThreshold": "5",
+    "Resilience:CircuitBreakerTimeoutSeconds": "30"
+  }
+}
